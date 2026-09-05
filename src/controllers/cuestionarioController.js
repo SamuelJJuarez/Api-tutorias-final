@@ -120,8 +120,10 @@ const buildResultadosPorSeccion = async (respuestas, secciones) => {
 
     // Buscamos las preguntas de esta sección
     const preguntas = await pool`
-      SELECT id_pregunta, pregunta FROM preguntas 
-      WHERE id_seccion = ${sec.id_seccion} ORDER BY id_pregunta ASC
+      SELECT p.id_pregunta, p.pregunta, r.tipo_resp 
+      FROM preguntas p 
+      JOIN respuestas r ON p.id_pregunta = r.id_pregunta
+      WHERE p.id_seccion = ${sec.id_seccion} ORDER BY p.id_pregunta ASC
     `;
 
     // Consultamos todas las opciones posibles para esta sección
@@ -161,9 +163,15 @@ const buildResultadosPorSeccion = async (respuestas, secciones) => {
         if (encontrada) opcionTexto = encontrada.opcion;
       }
 
+      const opciones_pregunta = opcionesTextos
+        .filter(o => o.id_pregunta === p.id_pregunta)
+        .map(o => o.opcion);
+
       return {
         id_pregunta: p.id_pregunta,
         pregunta: p.pregunta,
+        tipo_resp: p.tipo_resp,
+        opciones_posibles: opciones_pregunta,
         id_opcion_elegida,
         respuesta_elegida: opcionTexto
       };
