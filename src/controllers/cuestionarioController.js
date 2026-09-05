@@ -39,7 +39,10 @@ const getPreguntasPorSeccion = async (req, res) => {
     const nom_seccion = seccionRows.length > 0 ? seccionRows[0].nom_seccion : '';
 
     const preguntasRows = await pool`
-      SELECT * FROM preguntas WHERE id_seccion = ${id_seccion} ORDER BY id_pregunta ASC
+      SELECT p.*, r.tipo_resp 
+      FROM preguntas p
+      JOIN respuestas r ON p.id_pregunta = r.id_pregunta
+      WHERE p.id_seccion = ${id_seccion} ORDER BY p.id_pregunta ASC
     `;
 
     // Obtener todas las opciones para todas las preguntas de esta sección
@@ -136,9 +139,24 @@ const buildResultadosPorSeccion = async (respuestas, secciones) => {
       let opcionTexto = "Sin responder";
       let id_opcion_elegida = null;
 
-      if (respuestaAlum && respuestaAlum.id_opcion) {
+      if (respuestaAlum && respuestaAlum.valor !== undefined) {
+        if (Array.isArray(respuestaAlum.valor)) {
+          id_opcion_elegida = respuestaAlum.valor;
+          const textos = respuestaAlum.valor.map(v => {
+            const enc = opcionesTextos.find(o => o.id_opcion === parseInt(v));
+            return enc ? enc.opcion : v;
+          });
+          opcionTexto = textos.join(', ');
+        } else if (typeof respuestaAlum.valor === 'number' || (typeof respuestaAlum.valor === 'string' && !isNaN(respuestaAlum.valor) && opcionesTextos.some(o => o.id_opcion === parseInt(respuestaAlum.valor)))) {
+          id_opcion_elegida = parseInt(respuestaAlum.valor);
+          const encontrada = opcionesTextos.find(o => o.id_opcion === id_opcion_elegida);
+          if (encontrada) opcionTexto = encontrada.opcion;
+        } else {
+          opcionTexto = respuestaAlum.valor;
+        }
+      } else if (respuestaAlum && respuestaAlum.id_opcion !== undefined) {
+        // Compatibilidad hacia atrás
         id_opcion_elegida = respuestaAlum.id_opcion;
-        // Buscamos el texto de la opción elegida
         const encontrada = opcionesTextos.find(o => o.id_opcion === respuestaAlum.id_opcion);
         if (encontrada) opcionTexto = encontrada.opcion;
       }
