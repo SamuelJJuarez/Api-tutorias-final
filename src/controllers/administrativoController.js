@@ -461,6 +461,49 @@ const bulkCreateGrupos = async (req, res) => {
   }
 };
 
+// ─── 7. Resultados por Semestre ───────────────────────────────────────────
+// GET /api/administrativos/resultados/semestre?periodo=Y
+const getResultadosSemestre = async (req, res) => {
+  try {
+    const { periodo } = req.query;
+
+    if (!periodo) {
+      return res.status(400).json({ success: false, message: 'El parámetro periodo es obligatorio' });
+    }
+
+    // Obtener todos los grupos del periodo
+    const grupos = await pool`
+      SELECT indice_grupo FROM grupos WHERE periodo = ${periodo}
+    `;
+
+    if (grupos.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const indices = grupos.map(g => g.indice_grupo);
+
+    // Obtener alumnos de todos esos grupos
+    const alumnos = await pool`
+      SELECT num_control_alum FROM alumnos WHERE indice_grupo IN ${pool(indices)}
+    `;
+
+    if (alumnos.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const numControles = alumnos.map(a => a.num_control_alum);
+    const frecuenciasFinales = await buildFrecuencias(numControles);
+
+    res.status(200).json({
+      success: true,
+      data: frecuenciasFinales
+    });
+  } catch (error) {
+    console.error('Error al obtener resultados por semestre:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener resultados por semestre' });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -470,6 +513,7 @@ module.exports = {
   getGruposPorCarreraYPeriodo,
   getResultadosGenerales,
   getResultadosPorGrupo,
+  getResultadosSemestre,
   getMaestros,
   bulkCreateGrupos
 };
