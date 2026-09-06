@@ -113,7 +113,7 @@ const login = async (req, res) => {
     const token = jwt.sign(
       { 
         id_usuario: user.identificador_admin, 
-        nombre: user.nombre 
+        nombre: `${user.nombre} ${user.apellidoP} ${user.apellidoM}`.trim() 
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -126,7 +126,7 @@ const login = async (req, res) => {
         token: token,
         usuario: {
           id_usuario: user.identificador_admin,
-          nombre: user.nombre
+          nombre: `${user.nombre} ${user.apellidoP} ${user.apellidoM}`.trim()
         }
       }
     });
