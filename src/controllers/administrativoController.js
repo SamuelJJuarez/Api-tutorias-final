@@ -210,8 +210,10 @@ const buildFrecuencias = async (numControles) => {
 
     // Preguntas de la sección
     const preguntas = await pool`
-      SELECT id_pregunta, pregunta FROM preguntas 
-      WHERE id_seccion = ${sec.id_seccion} ORDER BY id_pregunta ASC
+      SELECT p.id_pregunta, p.pregunta, r.tipo_resp 
+      FROM preguntas p 
+      JOIN respuestas r ON p.id_pregunta = r.id_pregunta
+      WHERE p.id_seccion = ${sec.id_seccion} ORDER BY p.id_pregunta ASC
     `;
 
     // Todas las opciones posibles de la sección, incluyendo id_pregunta para filtrar correctamente
@@ -263,6 +265,7 @@ const buildFrecuencias = async (numControles) => {
       return {
         id_pregunta: p.id_pregunta,
         pregunta: p.pregunta,
+        tipo_resp: p.tipo_resp,
         opciones: opcionesFinales
       };
     });
@@ -382,17 +385,20 @@ const getResultadosPorGrupo = async (req, res) => {
 
     // Obtener alumnos del grupo
     const alumnos = await pool`
-      SELECT num_control_alum FROM alumnos WHERE indice_grupo = ${indice_grupo}
+      SELECT num_control_alum, nombre, "apellidoP", "apellidoM" 
+      FROM alumnos 
+      WHERE indice_grupo = ${indice_grupo}
+      ORDER BY "apellidoP" ASC
     `;
 
     if (alumnos.length === 0) {
-      return res.status(200).json({ success: true, data: [] });
+      return res.status(200).json({ success: true, data: { frecuencias: [], alumnos: [] } });
     }
 
     const numControles = alumnos.map(a => a.num_control_alum);
     const dataFinal = await buildFrecuencias(numControles);
 
-    res.status(200).json({ success: true, data: dataFinal });
+    res.status(200).json({ success: true, data: { frecuencias: dataFinal, alumnos: alumnos } });
   } catch (error) {
     console.error('Error al obtener resultados por grupo:', error);
     res.status(500).json({ success: false, message: 'Error al obtener resultados por grupo' });
