@@ -233,10 +233,17 @@ const buildFrecuencias = async (numControles) => {
       try { detalle = JSON.parse(respRow.contenido); } catch (e) { continue; }
       for (const item of detalle) {
         const idP = parseInt(item.id_pregunta);
-        const idO = item.id_opcion;
-        if (!idP || !idO) continue;
-        if (!conteos[idP]) conteos[idP] = {};
-        conteos[idP][idO] = (conteos[idP][idO] || 0) + 1;
+        if (!idP || item.valor === undefined) continue;
+        
+        let valores = Array.isArray(item.valor) ? item.valor : [item.valor];
+        
+        for (const v of valores) {
+          const idO = parseInt(v);
+          if (isNaN(idO)) continue;
+          
+          if (!conteos[idP]) conteos[idP] = {};
+          conteos[idP][idO] = (conteos[idP][idO] || 0) + 1;
+        }
       }
     }
 
