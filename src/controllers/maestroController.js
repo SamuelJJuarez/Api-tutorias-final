@@ -262,7 +262,7 @@ const createEntrevista = async (req, res) => {
     if (alumData.length > 0) {
       const { correo, nombre, apellidoP } = alumData[0];
       const tutorNombre = profData.length > 0 ? `${profData[0].nombre} ${profData[0].apellidoP} ${profData[0].apellidoM}` : 'Tu tutor';
-      const frontendUrl = process.env.FRONTEND_URL || 'https://sitiotutorias.netlify.app';
+      const frontendUrl = process.env.FRONTEND_URL || 'https://tutoriasitl.netlify.app';
       const confirmUrl = `${frontendUrl}/responder-entrevista?token=${token_respuesta}&accion=confirmar`;
       const rejectUrl = `${frontendUrl}/responder-entrevista?token=${token_respuesta}&accion=rechazar`;
 
@@ -353,7 +353,7 @@ const reprogramarEntrevista = async (req, res) => {
     if (alumData.length > 0) {
       const { correo, nombre, apellidoP } = alumData[0];
       const tutorNombre = profData.length > 0 ? `${profData[0].nombre} ${profData[0].apellidoP} ${profData[0].apellidoM}` : 'Tu tutor';
-      const frontendUrl = process.env.FRONTEND_URL || 'https://sitiotutorias.netlify.app';
+      const frontendUrl = process.env.FRONTEND_URL || 'https://tutoriasitl.netlify.app';
       const confirmUrl = `${frontendUrl}/responder-entrevista?token=${token_respuesta}&accion=confirmar`;
       const rejectUrl = `${frontendUrl}/responder-entrevista?token=${token_respuesta}&accion=rechazar`;
 
@@ -448,7 +448,7 @@ const notificarCuestionario = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No hay alumnos registrados en este grupo' });
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || 'https://sitiotutorias.netlify.app';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://tutoriasitl.netlify.app';
     const nombreTutor = `${grupo.nombre || ''} ${grupo.apellidoP || ''} ${grupo.apellidoM || ''}`.trim() || 'Tutor Asignado';
 
     // Enviar correos a cada alumno
