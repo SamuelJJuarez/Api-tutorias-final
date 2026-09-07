@@ -196,35 +196,43 @@ const buildFrecuencias = async (numControles) => {
 
   // 1. Traer todas las secciones
   const secciones = await pool`SELECT * FROM secciones_cuestionario ORDER BY id_seccion ASC`;
+  if (secciones.length === 0) return [];
+  const seccionIds = secciones.map(s => s.id_seccion);
 
   // 2. Traer todas las respuestas guardadas de los alumnos en cuestión
   const respuestasRows = await pool`
     SELECT * FROM alumnos_secciones WHERE num_control_alum IN ${pool(numControles)}
   `;
 
+  // Extraer todas las preguntas (1 consulta)
+  const todasLasPreguntas = await pool`
+    SELECT p.id_pregunta, p.pregunta, p.id_seccion, r.tipo_resp 
+    FROM preguntas p 
+    JOIN respuestas r ON p.id_pregunta = r.id_pregunta
+    WHERE p.id_seccion IN ${pool(seccionIds)} ORDER BY p.id_pregunta ASC
+  `;
+
+  // Extraer todas las opciones (1 consulta)
+  const todasLasOpciones = await pool`
+    SELECT p.id_pregunta, o.id_opcion, o.opcion, p.id_seccion
+    FROM opciones o
+    JOIN respuestas r ON o.id_respuesta = r.id_respuesta
+    JOIN preguntas p ON r.id_pregunta = p.id_pregunta
+    WHERE p.id_seccion IN ${pool(seccionIds)}
+    ORDER BY p.id_pregunta ASC, o.id_opcion ASC
+  `;
+
   // 3. Procesar por sección
-  const resultado = await Promise.all(secciones.map(async (sec) => {
+  const resultado = secciones.map((sec) => {
     // Respuestas de esta sección de todos los alumnos
     const respuestasSec = respuestasRows.filter(r => r.id_seccion === sec.id_seccion);
     if (respuestasSec.length === 0) return null;
 
     // Preguntas de la sección
-    const preguntas = await pool`
-      SELECT p.id_pregunta, p.pregunta, r.tipo_resp 
-      FROM preguntas p 
-      JOIN respuestas r ON p.id_pregunta = r.id_pregunta
-      WHERE p.id_seccion = ${sec.id_seccion} ORDER BY p.id_pregunta ASC
-    `;
+    const preguntas = todasLasPreguntas.filter(p => p.id_seccion === sec.id_seccion);
 
-    // Todas las opciones posibles de la sección, incluyendo id_pregunta para filtrar correctamente
-    const opcionesTextos = await pool`
-      SELECT p.id_pregunta, o.id_opcion, o.opcion
-      FROM opciones o
-      JOIN respuestas r ON o.id_respuesta = r.id_respuesta
-      JOIN preguntas p ON r.id_pregunta = p.id_pregunta
-      WHERE p.id_seccion = ${sec.id_seccion}
-      ORDER BY p.id_pregunta ASC, o.id_opcion ASC
-    `;
+    // Todas las opciones posibles de la sección
+    const opcionesTextos = todasLasOpciones.filter(o => o.id_seccion === sec.id_seccion);
 
     // Construir conteos: { id_pregunta: { id_opcion: cantidad } }
     const conteos = {};
@@ -282,7 +290,7 @@ const buildFrecuencias = async (numControles) => {
       nombre: sec.nom_seccion,
       preguntas: preguntasConFrecuencia
     };
-  }));
+  });
 
   return resultado.filter(item => item !== null);
 };

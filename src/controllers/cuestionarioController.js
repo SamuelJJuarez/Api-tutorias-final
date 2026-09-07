@@ -105,38 +105,43 @@ const saveSeccion = async (req, res) => {
 
 // 4. Función auxiliar para construir el desglose de preguntas y opciones respondidas
 const buildResultadosPorSeccion = async (respuestas, secciones) => {
-  const resultadosProcesados = await Promise.all(secciones.map(async (sec) => {
+  if (secciones.length === 0) return [];
+  const seccionIds = secciones.map(s => s.id_seccion);
+
+  // Extraer todas las preguntas de las secciones involucradas (1 consulta)
+  const todasLasPreguntas = await pool`
+    SELECT p.id_pregunta, p.pregunta, p.id_seccion, r.tipo_resp 
+    FROM preguntas p 
+    JOIN respuestas r ON p.id_pregunta = r.id_pregunta
+    WHERE p.id_seccion IN ${pool(seccionIds)} 
+    ORDER BY p.id_pregunta ASC
+  `;
+
+  // Extraer todas las opciones de las secciones involucradas (1 consulta)
+  const todasLasOpciones = await pool`
+    SELECT o.id_opcion, o.opcion, p.id_pregunta, p.id_seccion
+    FROM opciones o
+    JOIN respuestas r ON o.id_respuesta = r.id_respuesta
+    JOIN preguntas p ON r.id_pregunta = p.id_pregunta
+    WHERE p.id_seccion IN ${pool(seccionIds)}
+  `;
+
+  const resultadosProcesados = secciones.map((sec) => {
     const respuestaSeccion = respuestas.find(r => r.id_seccion === sec.id_seccion);
     if (!respuestaSeccion) return null;
 
     let respuestasDetalle = [];
     try {
-      // Intentamos parsear el JSON guardado
       respuestasDetalle = JSON.parse(respuestaSeccion.contenido);
     } catch (e) {
       console.warn('El contenido en la BD no es un JSON válido para ID:', respuestaSeccion.num_control_alum);
       respuestasDetalle = [];
     }
 
-    // Buscamos las preguntas de esta sección
-    const preguntas = await pool`
-      SELECT p.id_pregunta, p.pregunta, r.tipo_resp 
-      FROM preguntas p 
-      JOIN respuestas r ON p.id_pregunta = r.id_pregunta
-      WHERE p.id_seccion = ${sec.id_seccion} ORDER BY p.id_pregunta ASC
-    `;
-
-    // Consultamos todas las opciones posibles para esta sección
-    const opcionesTextos = await pool`
-      SELECT o.id_opcion, o.opcion 
-      FROM opciones o
-      JOIN respuestas r ON o.id_respuesta = r.id_respuesta
-      JOIN preguntas p ON r.id_pregunta = p.id_pregunta
-      WHERE p.id_seccion = ${sec.id_seccion}
-    `;
+    const preguntas = todasLasPreguntas.filter(p => p.id_seccion === sec.id_seccion);
+    const opcionesTextos = todasLasOpciones.filter(o => o.id_seccion === sec.id_seccion);
 
     const detalleRespuestas = preguntas.map(p => {
-      // Ubicamos qué opción eligió este alumno en particular
       const respuestaAlum = respuestasDetalle.find(r => parseInt(r.id_pregunta) === p.id_pregunta);
       let opcionTexto = "Sin responder";
       let id_opcion_elegida = null;
@@ -157,7 +162,6 @@ const buildResultadosPorSeccion = async (respuestas, secciones) => {
           opcionTexto = respuestaAlum.valor;
         }
       } else if (respuestaAlum && respuestaAlum.id_opcion !== undefined) {
-        // Compatibilidad hacia atrás
         id_opcion_elegida = respuestaAlum.id_opcion;
         const encontrada = opcionesTextos.find(o => o.id_opcion === respuestaAlum.id_opcion);
         if (encontrada) opcionTexto = encontrada.opcion;
@@ -182,7 +186,7 @@ const buildResultadosPorSeccion = async (respuestas, secciones) => {
       nombre: sec.nom_seccion,
       respuestas: detalleRespuestas
     };
-  }));
+  });
 
   return resultadosProcesados.filter(item => item !== null);
 };
