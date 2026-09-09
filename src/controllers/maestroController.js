@@ -32,7 +32,7 @@ const register = async (req, res) => {
     }
 
     // Encriptar contraseña
-    const saltRounds = 10;
+    const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(contrasena, saltRounds);
 
     const registroId = crypto.randomUUID();

@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const { testConnection } = require('./config/database');
@@ -14,10 +16,40 @@ const passwordRoutes = require('./routes/passwordRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middlewares
-app.use(cors());
+// Configuración de CORS
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? (process.env.FRONTEND_URL || 'https://tutoriasitl.netlify.app')
+    : '*',
+  optionsSuccessStatus: 200
+};
+
+// Rate limiting (Protección contra DDoS / Fuerza Bruta)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // Límite de 100 peticiones por IP cada 15 mins
+  message: { success: false, message: 'Demasiadas peticiones desde esta IP, por favor intenta de nuevo más tarde.' }
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // Límite de 5 peticiones fallidas por IP cada 15 mins
+  message: { success: false, message: 'Demasiados intentos de inicio de sesión, por favor intenta de nuevo en 15 minutos.' }
+});
+
+// Middlewares Globales
+app.use(helmet()); // Seguridad de cabeceras HTTP
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Limiter general para todas las rutas
+app.use('/api', generalLimiter);
+
+// Limiter estricto para rutas de autenticación
+app.use('/api/alumnos/login', loginLimiter);
+app.use('/api/maestros/login', loginLimiter);
+app.use('/api/administrativos/login', loginLimiter);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -48,10 +80,14 @@ app.use((req, res) => {
 // Manejo de errores global
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  
+  // En producción no enviamos detalles del error al cliente
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   res.status(500).json({ 
     success: false,
     message: 'Error interno del servidor',
-    error: err.message 
+    error: isProduction ? undefined : err.message 
   });
 });
 

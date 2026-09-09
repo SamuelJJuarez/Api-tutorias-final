@@ -31,7 +31,7 @@ const requestPasswordReset = async (req, res) => {
       return res.status(404).json({ success: false, message: 'No se encontró ninguna cuenta con ese correo' });
     }
 
-    const saltRounds = 10;
+    const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(nueva_contrasena, saltRounds);
     const registroId = crypto.randomUUID();
 
