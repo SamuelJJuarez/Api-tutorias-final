@@ -16,11 +16,16 @@ const passwordRoutes = require('./routes/passwordRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Configuración requerida para Vercel (o cualquier Proxy)
+// Permite que el Rate Limiter lea la IP real del usuario y no la de Vercel
+app.set('trust proxy', 1);
+
+// Normalizar la URL del Frontend para evitar fallos de CORS por un slash final "/"
+const frontendUrl = (process.env.FRONTEND_URL || 'https://tutoriasitl.netlify.app').replace(/\/$/, '');
+
 // Configuración de CORS
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? (process.env.FRONTEND_URL || 'https://tutoriasitl.netlify.app')
-    : '*',
+  origin: process.env.NODE_ENV === 'production' ? frontendUrl : '*',
   optionsSuccessStatus: 200
 };
 
@@ -105,4 +110,12 @@ const startServer = async () => {
   });
 };
 
-startServer();
+if (process.env.NODE_ENV !== 'production') {
+  startServer();
+} else {
+  // En Vercel (Producción), a veces Vercel llama directamente a app en lugar de hacer listen.
+  // Sin embargo, si están corriendo `npm start`, Vercel lo ejecutará como un web server tradicional.
+  startServer();
+}
+
+module.exports = app; // Requerido por Vercel para Serverless Functions
