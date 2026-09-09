@@ -48,7 +48,8 @@ const requestPasswordReset = async (req, res) => {
 
     pendingRegistrations.set(registroId, 'pending');
 
-    const link = `${frontendUrl}/verificar-password?token=${token}`;
+    const baseUrl = frontendUrl.replace(/\/$/, '');
+    const link = `${baseUrl}/verificar-password?token=${token}`;
     
     const transporter = require('nodemailer').createTransport({
       service: 'gmail',

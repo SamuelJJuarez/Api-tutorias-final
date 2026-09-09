@@ -52,7 +52,8 @@ const register = async (req, res) => {
     pendingRegistrations.set(registroId, 'pending');
 
     // Enviar el correo
-    const link = `${frontendUrl}/verificar-correo?token=${token}`;
+    const baseUrl = frontendUrl.replace(/\/$/, '');
+    const link = `${baseUrl}/verificar-correo?token=${token}`;
     await sendVerificationEmail(correo, link);
 
     res.status(200).json({

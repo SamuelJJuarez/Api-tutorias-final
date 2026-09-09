@@ -53,7 +53,8 @@ const register = async (req, res) => {
     pendingRegistrations.set(registroId, 'pending');
 
     // Enviar el correo
-    const link = `${frontendUrl}/verificar-correo?token=${token}`;
+    const baseUrl = frontendUrl.replace(/\/$/, '');
+    const link = `${baseUrl}/verificar-correo?token=${token}`;
     await sendVerificationEmail(correo, link);
 
     res.status(200).json({
@@ -448,7 +449,7 @@ const notificarCuestionario = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No hay alumnos registrados en este grupo' });
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || 'https://tutoriasitl.netlify.app';
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://tutoriasitl.netlify.app').replace(/\/$/, '');
     const nombreTutor = `${grupo.nombre || ''} ${grupo.apellidoP || ''} ${grupo.apellidoM || ''}`.trim() || 'Tutor Asignado';
 
     // Enviar correos a cada alumno
